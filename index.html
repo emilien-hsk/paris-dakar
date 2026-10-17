@@ -54,6 +54,28 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--red);outline-of
 .rank .l small{font-family:var(--body);font-size:14px;font-weight:700;margin-left:4px}
 .rank li.first{background:var(--plate);color:var(--plate-ink)}
 .note{color:var(--muted);font-size:14px;margin:10px 0 18px}
+button{touch-action:manipulation}
+h2{font-family:var(--head);font-weight:900;font-size:36px;line-height:1;margin:28px 0 10px}
+.chips,.stats{grid-column:1/-1}
+.stats{color:var(--muted);font-size:15px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font-variant-numeric:tabular-nums;font-weight:700;font-size:14px;border:2px solid var(--line);border-radius:6px;padding:2px 8px;background:var(--bg);color:var(--ink)}
+.chip.best{background:var(--plate);color:var(--plate-ink);border-color:var(--plate-ink)}
+.rank li.first .chip{border-color:var(--plate-ink)}
+.times{list-style:none;padding:0;margin:0}
+.times li{display:grid;grid-template-columns:40px 1fr auto auto;align-items:center;gap:10px;background:var(--card);border:3px solid var(--line);border-radius:8px;padding:8px 10px;margin-bottom:8px}
+.times .p,.times .t{font-family:var(--head);font-weight:900;font-size:30px;line-height:1;font-variant-numeric:tabular-nums}
+.times .p{text-align:center}
+.times .who{font-weight:700;overflow-wrap:anywhere}
+.times .who small{display:block;font-weight:500;opacity:.7}
+.times button{padding:4px 10px}
+.times li.first{background:var(--plate);color:var(--plate-ink)}
+.times li.first button{color:var(--plate-ink);border-color:var(--plate-ink)}
+.adv{margin:22px 0 8px;color:var(--muted);font-size:14px}
+.adv summary{cursor:pointer;opacity:.7}
+.adv-row{align-items:center;margin-bottom:8px}
+.advn{flex:1;font-weight:700;color:var(--ink);overflow-wrap:anywhere}
+.adv input[type=number]{width:80px;flex:none;padding:8px;font:inherit;border:3px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink)}
 .sr{position:absolute;left:-9999px}
 @media (max-width:420px){.plate{font-size:52px;min-width:72px}}
 </style>
@@ -63,9 +85,10 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--red);outline-of
 <div class="wrap" id="app"></div>
 <script>
 (function(){
-  var KEY="paris-dakar-v1", app=document.getElementById("app");
+  var KEY="paris-dakar-v2", app=document.getElementById("app");
   var S={phase:"setup",teams:[],start:0,end:0,nid:1};
-  try{var raw=localStorage.getItem(KEY); if(raw){var p=JSON.parse(raw); if(p&&p.teams)S=p;}}catch(e){}
+  try{var raw=localStorage.getItem(KEY); if(raw){var p=JSON.parse(raw); if(p&&p.teams)S=p;}
+    else{var old=localStorage.getItem("paris-dakar-v1"); if(old){var o=JSON.parse(old); if(o&&o.teams){o.teams=o.teams.map(function(t){var m=[];for(var k=1;k<t.laps;k++)m.push(null); if(t.laps>0)m.push(t.last||null); return {id:t.id,name:t.name,marks:m};}); S=o;}}}}catch(e){}
   var confirmEnd=false, confirmReset=false, tick=null;
 
   function save(){try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}}
@@ -76,11 +99,41 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--red);outline-of
     return (h>0?h+":":"")+pad(m)+":"+pad(s);
   }
   function elapsed(){return (S.phase==="done"?S.end:Date.now())-S.start;}
+  function fmtL(ms){var t=Math.max(0,Math.round(ms/100)),s=Math.floor(t/10)%60,m=Math.floor(t/600);return m+":"+(s<10?"0":"")+s+"."+(t%10);}
+  function durs(t){return t.marks.map(function(x,i){if(x===null||(i>0&&t.marks[i-1]===null))return null;return x-(i?t.marks[i-1]:0);});}
+  function lastMark(t){for(var i=t.marks.length-1;i>=0;i--)if(t.marks[i]!==null)return t.marks[i];return 0;}
+  var advOpen=false;
+  function parseT(s){if(!s.trim())return null;var p=s.trim().split(":").map(Number);if(p.some(function(x){return isNaN(x)||x<0;}))return null;var sec;if(p.length===1)sec=p[0]*60;else if(p.length===2)sec=p[0]*60+p[1];else if(p.length===3)sec=p[0]*3600+p[1]*60+p[2];else return null;return sec*1000;}
+  function advHtml(){
+    var h='<details class="adv"'+(advOpen?' open':'')+'><summary>Réglages</summary>';
+    h+='<p class="note">Ajouter des tours déjà faits, sans temps :</p>';
+    S.teams.forEach(function(t){h+='<div class="row adv-row"><span class="advn">'+esc(t.name)+'</span><input type="number" id="nl'+t.id+'" min="1" max="99" value="1" inputmode="numeric" aria-label="Nombre de tours pour '+esc(t.name)+'"><button class="ghost" data-act="addnt" data-id="'+t.id+'">Ajouter</button></div>';});
+    h+='<p class="note">Corriger le chrono (temps écoulé depuis le départ, mm:ss ou h:mm:ss) :</p><div class="row"><input type="text" id="setclk" value="'+fmt(elapsed())+'" inputmode="numeric" aria-label="Temps écoulé"><button class="ghost" data-act="setclk">Appliquer</button></div></details>';
+    return h;
+  }
+  function chips(t){
+    var d=durs(t); if(!d.length)return '<div class="stats">Aucun tour pour l’instant.</div>';
+    var kn=d.filter(function(x){return x!==null;}), b=kn.length?Math.min.apply(null,kn):-1, h='<div class="chips">';
+    d.forEach(function(x,i){h+='<span class="chip'+(x!==null&&x===b?' best':'')+'">T'+(i+1)+' '+(x===null?'—':fmtL(x))+'</span>';});
+    return h+'</div>';
+  }
+  function bestHtml(){
+    var all=[];
+    S.teams.forEach(function(t){durs(t).forEach(function(d,i){if(d!==null)all.push({id:t.id,i:i,n:t.name,d:d});});});
+    all.sort(function(a,b){return a.d-b.d;});
+    var h='<h2>Meilleurs temps</h2>';
+    if(!all.length)return h+'<p class="empty">Aucun tour enregistré pour l’instant.</p>';
+    h+='<ol class="times">';
+    all.slice(0,10).forEach(function(x,k){
+      h+='<li class="'+(k===0?'first':'')+'"><span class="p">'+(k+1)+'</span><span class="who">'+esc(x.n)+'<small>Tour '+(x.i+1)+'</small></span><span class="t">'+fmtL(x.d)+'</span><button class="ghost" data-act="delt" data-id="'+x.id+'" data-i="'+x.i+'" aria-label="Supprimer ce temps">Supprimer</button></li>';
+    });
+    return h+'</ol><p class="note">Supprimer un temps retire aussi ce tour du compte de l’écurie. Les 10 meilleurs sont affichés.</p>';
+  }
 
   function addTeam(){
     var inp=document.getElementById("tname"); if(!inp)return;
     var v=inp.value.trim(); if(!v)return;
-    S.teams.push({id:S.nid++,name:v,laps:0,last:0}); save(); render();
+    S.teams.push({id:S.nid++,name:v,marks:[]}); save(); render();
     var i2=document.getElementById("tname"); if(i2)i2.focus();
   }
 
@@ -91,6 +144,7 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--red);outline-of
   }
 
   function render(){
+    var ad=app.querySelector("details.adv"); if(ad)advOpen=ad.open;
     var h='<h1>Paris–Dakar</h1>';
     if(S.phase==="setup"){
       h+='<p class="sub">Inscris les écuries au départ, puis lance la course.</p>'+addForm();
@@ -105,24 +159,27 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--red);outline-of
     else if(S.phase==="race"){
       h+='<div class="clock"><span id="clk">'+fmt(elapsed())+'</span><small>Temps de course</small></div>';
       S.teams.forEach(function(t){
-        h+='<div class="team"><div class="plate">'+t.laps+'<small>'+(t.laps>1?'tours':'tour')+'</small></div>'+
+        var n=t.marks.length; h+='<div class="team"><div class="plate">'+n+'<small>'+(n>1?'tours':'tour')+'</small></div>'+
           '<div><div class="tname">'+esc(t.name)+'</div><div class="acts">'+
           '<button class="plus" data-act="lap" data-id="'+t.id+'">+1 tour</button>'+
-          '<button class="ghost" data-act="unlap" data-id="'+t.id+'" aria-label="Retirer un tour à '+esc(t.name)+'"'+(t.laps?'':' disabled')+'>−1</button>'+
-          '</div></div></div>';
+          '<button class="ghost" data-act="unlap" data-id="'+t.id+'" aria-label="Retirer un tour à '+esc(t.name)+'"'+(n?'':' disabled')+'>−1</button>'+
+          '</div></div>'+chips(t)+'</div>';
       });
+      h+=bestHtml();
       h+='<div class="addbar">'+addForm()+'</div>';
+      h+=advHtml();
       h+='<div class="endbar"><button class="'+(confirmEnd?'':'ghost')+'" data-act="end">'+(confirmEnd?'Confirmer la fin de la course':'Terminer la course')+'</button></div>';
     }
     else{
-      var r=S.teams.slice().sort(function(a,b){return b.laps-a.laps||a.last-b.last;});
+      var r=S.teams.slice().sort(function(a,b){return b.marks.length-a.marks.length||lastMark(a)-lastMark(b);});
       h+='<div class="clock"><span>'+fmt(elapsed())+'</span><small>Durée totale de la course</small></div>';
       h+='<ol class="rank">';
       r.forEach(function(t,i){
         h+='<li class="'+(i===0?'first':'')+'"><span class="pos">'+(i+1)+'</span><span class="n">'+esc(t.name)+'</span>'+
-          '<span class="l">'+t.laps+'<small>'+(t.laps>1?'tours':'tour')+'</small></span></li>';
+          '<span class="l">'+t.marks.length+'<small>'+(t.marks.length>1?'tours':'tour')+'</small></span>'+chips(t)+'</li>';
       });
       h+='</ol><p class="note">À nombre de tours égal, l’écurie qui a atteint ce total en premier est devant.</p>';
+      h+=bestHtml();
       h+='<button class="'+(confirmReset?'':'ghost')+'" data-act="reset" style="width:100%">'+(confirmReset?'Confirmer : tout effacer':'Nouvelle course')+'</button>';
     }
     app.innerHTML=h;
@@ -138,8 +195,11 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--red);outline-of
     if(act==="add")return addTeam();
     if(act==="del"){S.teams=S.teams.filter(function(x){return x.id!==id;});}
     else if(act==="start"){if(!S.teams.length)return; S.phase="race";S.start=Date.now();}
-    else if(act==="lap"&&t){t.laps++;t.last=Date.now()-S.start;}
-    else if(act==="unlap"&&t&&t.laps>0){t.laps--;t.last=t.laps?t.last:0;}
+    else if(act==="lap"&&t){t.marks.push(Date.now()-S.start);}
+    else if(act==="unlap"&&t&&t.marks.length){t.marks.pop();}
+    else if(act==="delt"&&t){t.marks.splice(+b.getAttribute("data-i"),1);}
+    else if(act==="addnt"&&t){var inp=document.getElementById("nl"+id),k=Math.max(1,Math.min(99,parseInt(inp&&inp.value,10)||1));for(var q=0;q<k;q++)t.marks.push(null);}
+    else if(act==="setclk"){var ms=parseT(document.getElementById("setclk").value);if(ms===null)return;var delta=ms-elapsed();S.start-=delta;S.teams.forEach(function(x){x.marks=x.marks.map(function(m){return m===null?null:Math.max(0,m+delta);});});}
     else if(act==="end"){
       if(!confirmEnd){confirmEnd=true;render();return;}
       confirmEnd=false;S.phase="done";S.end=Date.now();
