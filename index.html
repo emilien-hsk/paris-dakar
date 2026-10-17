@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Paris–Dakar · Course de vélo</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@500;700&family=Big+Shoulders+Display:wght@800;900&display=swap">
+<style>
+:root{
+  --bg:#ddd3bf; --ink:#1c1a17; --muted:#5e5648; --card:#efe8d8; --line:#1c1a17;
+  --plate:#ffc400; --plate-ink:#1c1a17; --red:#c62828; --btn:#1c1a17; --btn-ink:#ffc400;
+  --head:"Big Shoulders Display","Impact","Arial Narrow",sans-serif;
+  --body:"Barlow","Segoe UI",Arial,sans-serif;
+  box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){--bg:#191714;--ink:#f1ead9;--muted:#a79c85;--card:#24211c;--line:#f1ead9;--btn:#ffc400;--btn-ink:#1c1a17}
+}
+:root[data-theme="dark"]{--bg:#191714;--ink:#f1ead9;--muted:#a79c85;--card:#24211c;--line:#f1ead9;--btn:#ffc400;--btn-ink:#1c1a17}
+*{box-sizing:border-box}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:17px;line-height:1.4;min-height:100vh}
+.wrap{max-width:720px;margin:0 auto;padding:16px 16px 48px}
+.stripe{height:10px;background:repeating-linear-gradient(135deg,var(--plate) 0 14px,var(--ink) 14px 28px)}
+h1{font-family:var(--head);font-weight:900;font-size:clamp(44px,12vw,76px);line-height:.9;margin:18px 0 4px;letter-spacing:.5px}
+.sub{color:var(--muted);margin:0 0 18px}
+.clock{font-family:var(--head);font-weight:900;font-size:clamp(64px,22vw,140px);line-height:1;text-align:center;background:var(--plate);color:var(--plate-ink);border:4px solid var(--ink);border-radius:10px;padding:8px 8px 2px;font-variant-numeric:tabular-nums;margin:6px 0 18px}
+.clock small{display:block;font-family:var(--body);font-weight:700;font-size:15px;letter-spacing:.3px;padding-bottom:8px}
+.row{display:flex;gap:8px}
+input[type=text]{flex:1;min-width:0;font:inherit;font-weight:500;padding:14px;border:3px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink)}
+button{font:inherit;font-weight:700;cursor:pointer;border:3px solid var(--line);border-radius:8px;padding:12px 16px;background:var(--btn);color:var(--btn-ink)}
+button.ghost{background:transparent;color:var(--ink)}
+button:disabled{opacity:.4;cursor:not-allowed}
+button:focus-visible,input:focus-visible{outline:3px solid var(--red);outline-offset:2px}
+.list{list-style:none;padding:0;margin:14px 0}
+.list li{display:flex;align-items:center;justify-content:space-between;gap:8px;background:var(--card);border:3px solid var(--line);border-radius:8px;padding:10px 12px;margin-bottom:8px;font-weight:700}
+.list li button{padding:6px 10px}
+.empty{color:var(--muted);margin:14px 0}
+.go{width:100%;font-family:var(--head);font-weight:900;font-size:34px;padding:12px;background:var(--red);color:#fff;border-color:var(--ink)}
+.team{display:grid;grid-template-columns:auto 1fr;gap:12px;align-items:center;background:var(--card);border:3px solid var(--line);border-radius:10px;padding:10px;margin-bottom:12px}
+.plate{font-family:var(--head);font-weight:900;font-size:64px;line-height:1;min-width:88px;text-align:center;background:var(--plate);color:var(--plate-ink);border:3px solid var(--ink);border-radius:8px;padding:6px 8px 2px;font-variant-numeric:tabular-nums}
+.plate small{display:block;font-family:var(--body);font-size:12px;font-weight:700;padding-bottom:4px}
+.tname{font-weight:700;font-size:22px;margin-bottom:8px;overflow-wrap:anywhere}
+.acts{display:flex;gap:8px}
+.acts .plus{flex:1;font-family:var(--head);font-weight:900;font-size:30px;padding:8px 12px}
+.addbar{margin:20px 0}
+.endbar{display:flex;gap:8px;margin-top:8px}
+.endbar button{flex:1}
+.rank{list-style:none;padding:0;margin:0}
+.rank li{display:grid;grid-template-columns:56px 1fr auto;align-items:center;gap:12px;background:var(--card);border:3px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:10px}
+.rank .pos{font-family:var(--head);font-weight:900;font-size:44px;line-height:1;text-align:center}
+.rank .n{font-weight:700;font-size:22px;overflow-wrap:anywhere}
+.rank .l{font-family:var(--head);font-weight:900;font-size:40px;line-height:1}
+.rank .l small{font-family:var(--body);font-size:14px;font-weight:700;margin-left:4px}
+.rank li.first{background:var(--plate);color:var(--plate-ink)}
+.note{color:var(--muted);font-size:14px;margin:10px 0 18px}
+.sr{position:absolute;left:-9999px}
+@media (max-width:420px){.plate{font-size:52px;min-width:72px}}
+</style>
+</head>
+<body>
+<div class="stripe"></div>
+<div class="wrap" id="app"></div>
+<script>
+(function(){
+  var KEY="paris-dakar-v1", app=document.getElementById("app");
+  var S={phase:"setup",teams:[],start:0,end:0,nid:1};
+  try{var raw=localStorage.getItem(KEY); if(raw){var p=JSON.parse(raw); if(p&&p.teams)S=p;}}catch(e){}
+  var confirmEnd=false, confirmReset=false, tick=null;
+
+  function save(){try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}}
+  function esc(s){return String(s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];});}
+  function fmt(ms){
+    var t=Math.max(0,Math.floor(ms/1000)), h=Math.floor(t/3600), m=Math.floor(t%3600/60), s=t%60;
+    var pad=function(n){return n<10?"0"+n:""+n;};
+    return (h>0?h+":":"")+pad(m)+":"+pad(s);
+  }
+  function elapsed(){return (S.phase==="done"?S.end:Date.now())-S.start;}
+
+  function addTeam(){
+    var inp=document.getElementById("tname"); if(!inp)return;
+    var v=inp.value.trim(); if(!v)return;
+    S.teams.push({id:S.nid++,name:v,laps:0,last:0}); save(); render();
+    var i2=document.getElementById("tname"); if(i2)i2.focus();
+  }
+
+  function addForm(){
+    return '<div class="row"><label class="sr" for="tname">Nom de l’écurie</label>'+
+      '<input type="text" id="tname" maxlength="40" placeholder="Nom de l’écurie" autocomplete="off">'+
+      '<button data-act="add">Ajouter</button></div>';
+  }
+
+  function render(){
+    var h='<h1>Paris–Dakar</h1>';
+    if(S.phase==="setup"){
+      h+='<p class="sub">Inscris les écuries au départ, puis lance la course.</p>'+addForm();
+      if(!S.teams.length)h+='<p class="empty">Aucune écurie inscrite. Ajoute un premier nom pour commencer.</p>';
+      else{
+        h+='<ul class="list">';
+        S.teams.forEach(function(t){h+='<li><span>'+esc(t.name)+'</span><button class="ghost" data-act="del" data-id="'+t.id+'" aria-label="Retirer '+esc(t.name)+'">Retirer</button></li>';});
+        h+='</ul>';
+      }
+      h+='<button class="go" data-act="start"'+(S.teams.length?'':' disabled')+'>Lancer la course</button>';
+    }
+    else if(S.phase==="race"){
+      h+='<div class="clock"><span id="clk">'+fmt(elapsed())+'</span><small>Temps de course</small></div>';
+      S.teams.forEach(function(t){
+        h+='<div class="team"><div class="plate">'+t.laps+'<small>'+(t.laps>1?'tours':'tour')+'</small></div>'+
+          '<div><div class="tname">'+esc(t.name)+'</div><div class="acts">'+
+          '<button class="plus" data-act="lap" data-id="'+t.id+'">+1 tour</button>'+
+          '<button class="ghost" data-act="unlap" data-id="'+t.id+'" aria-label="Retirer un tour à '+esc(t.name)+'"'+(t.laps?'':' disabled')+'>−1</button>'+
+          '</div></div></div>';
+      });
+      h+='<div class="addbar">'+addForm()+'</div>';
+      h+='<div class="endbar"><button class="'+(confirmEnd?'':'ghost')+'" data-act="end">'+(confirmEnd?'Confirmer la fin de la course':'Terminer la course')+'</button></div>';
+    }
+    else{
+      var r=S.teams.slice().sort(function(a,b){return b.laps-a.laps||a.last-b.last;});
+      h+='<div class="clock"><span>'+fmt(elapsed())+'</span><small>Durée totale de la course</small></div>';
+      h+='<ol class="rank">';
+      r.forEach(function(t,i){
+        h+='<li class="'+(i===0?'first':'')+'"><span class="pos">'+(i+1)+'</span><span class="n">'+esc(t.name)+'</span>'+
+          '<span class="l">'+t.laps+'<small>'+(t.laps>1?'tours':'tour')+'</small></span></li>';
+      });
+      h+='</ol><p class="note">À nombre de tours égal, l’écurie qui a atteint ce total en premier est devant.</p>';
+      h+='<button class="'+(confirmReset?'':'ghost')+'" data-act="reset" style="width:100%">'+(confirmReset?'Confirmer : tout effacer':'Nouvelle course')+'</button>';
+    }
+    app.innerHTML=h;
+    clearInterval(tick);
+    if(S.phase==="race"){tick=setInterval(function(){var c=document.getElementById("clk");if(c)c.textContent=fmt(elapsed());},250);}
+  }
+
+  app.addEventListener("click",function(e){
+    var b=e.target.closest("button"); if(!b)return;
+    var act=b.getAttribute("data-act"), id=+b.getAttribute("data-id");
+    var t=S.teams.filter(function(x){return x.id===id;})[0];
+    if(act!=="end")confirmEnd=false; if(act!=="reset")confirmReset=false;
+    if(act==="add")return addTeam();
+    if(act==="del"){S.teams=S.teams.filter(function(x){return x.id!==id;});}
+    else if(act==="start"){if(!S.teams.length)return; S.phase="race";S.start=Date.now();}
+    else if(act==="lap"&&t){t.laps++;t.last=Date.now()-S.start;}
+    else if(act==="unlap"&&t&&t.laps>0){t.laps--;t.last=t.laps?t.last:0;}
+    else if(act==="end"){
+      if(!confirmEnd){confirmEnd=true;render();return;}
+      confirmEnd=false;S.phase="done";S.end=Date.now();
+    }
+    else if(act==="reset"){
+      if(!confirmReset){confirmReset=true;render();return;}
+      confirmReset=false;S={phase:"setup",teams:[],start:0,end:0,nid:1};
+    }
+    save();render();
+  });
+  app.addEventListener("keydown",function(e){if(e.key==="Enter"&&e.target.id==="tname")addTeam();});
+  render();
+})();
+</script>
+</body>
+</html>
